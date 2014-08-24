@@ -879,6 +879,19 @@ int main(int argc, char** argv)
         } else {
           //ROS_INFO ("Odometry update out of bound");
         }
+        
+        float deltaR = sqrt(matX.at<float>(0, 0) * 180 / PI * matX.at<float>(0, 0) * 180 / PI
+                     + matX.at<float>(1, 0) * 180 / PI * matX.at<float>(1, 0) * 180 / PI
+                     + matX.at<float>(2, 0) * 180 / PI * matX.at<float>(2, 0) * 180 / PI);
+        float deltaT = sqrt(matX.at<float>(3, 0) * 100 * matX.at<float>(3, 0) * 100
+                     + matX.at<float>(4, 0) * 100 * matX.at<float>(4, 0) * 100
+                     + matX.at<float>(5, 0) * 100 * matX.at<float>(5, 0) * 100);
+
+        if (deltaR < 0.02 && deltaT < 0.02) {
+          break;
+        }
+
+        //ROS_INFO ("iter: %d, deltaR: %f, deltaT: %f", iterCount, deltaR, deltaT);
       }
 
       /*sensor_msgs::PointCloud2 pc12;
