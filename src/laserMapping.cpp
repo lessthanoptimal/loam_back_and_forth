@@ -268,6 +268,7 @@ int main(int argc, char** argv)
     laserCloudArray[i].reset(new pcl::PointCloud<pcl::PointXYZHSV>());
   }
 
+  ros::Rate rate(100);
   bool status = ros::ok();
   while (status) {
     ros::spinOnce();
@@ -794,7 +795,7 @@ int main(int argc, char** argv)
     }
 
     status = ros::ok();
-    cv::waitKey(10);
+    rate.sleep();
   }
 
   return 0;
