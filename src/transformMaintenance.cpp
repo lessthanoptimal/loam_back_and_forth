@@ -5,7 +5,7 @@
 #include <ros/ros.h>
 
 #include <nav_msgs/Odometry.h>
-#include <sensor_msgs/Imu.h>
+//#include <sensor_msgs/Imu.h>  <--- not actually needed
 #include <sensor_msgs/PointCloud2.h>
 
 #include <tf/transform_datatypes.h>

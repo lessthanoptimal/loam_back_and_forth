@@ -220,6 +220,14 @@ void laserOdometryHandler(const nav_msgs::Odometry::ConstPtr& laserOdometry)
 
 int main(int argc, char** argv)
 {
+    FILE *fid = fopen("log_pose.txt","w");
+    if( fid == NULL ) {
+        printf("Failed to open file\n");
+        exit(0);
+    } else {
+        fprintf(fid,"# location[x y z] quaternion[x y z w]\n");
+    }
+
   ros::init(argc, argv, "laserMapping");
   ros::NodeHandle nh;
 
@@ -768,6 +776,15 @@ int main(int argc, char** argv)
       odomAftMapped.pose.pose.position.y = transformAftMapped[4];
       odomAftMapped.pose.pose.position.z = transformAftMapped[5];
       pubOdomAftMapped.publish(odomAftMapped);
+
+
+      if( fid != NULL ) {
+          fprintf(fid,"%9.6f %9.6f %9.6f %.10f %.10f %.10f %.10f\n",
+                  odomAftMapped.pose.pose.position.x,odomAftMapped.pose.pose.position.y,odomAftMapped.pose.pose.position.z,
+                  odomAftMapped.pose.pose.orientation.x,odomAftMapped.pose.pose.orientation.y,
+                  odomAftMapped.pose.pose.orientation.z,odomAftMapped.pose.pose.orientation.w);
+          fflush(fid);
+      }
 
       /*sensor_msgs::PointCloud2 pc12;
       pcl::toROSMsg(*laserCloudCornerFromMap, pc12);

@@ -84,6 +84,8 @@ float imuShiftX[imuQueLength] = {0};
 float imuShiftY[imuQueLength] = {0};
 float imuShiftZ[imuQueLength] = {0};
 
+FILE *fid = NULL;
+
 void ShiftToStartIMU()
 {
   float x1 = cos(imuYawStart) * imuShiftFromStartXCur - sin(imuYawStart) * imuShiftFromStartZCur;
@@ -176,6 +178,11 @@ void AccumulateIMUShift()
     imuVeloX[imuPointerLast] = imuVeloX[imuPointerBack] + accX * timeDiff;
     imuVeloY[imuPointerLast] = imuVeloY[imuPointerBack] + accY * timeDiff;
     imuVeloZ[imuPointerLast] = imuVeloZ[imuPointerBack] + accZ * timeDiff;
+
+    if( fid != NULL ) {
+        fprintf(fid,"%9.6f %9.6f %9.6f 0 0 0 1\n",imuShiftX[imuPointerLast],imuShiftY[imuPointerLast],imuShiftZ[imuPointerLast]);
+        fflush(fid);
+    }
   }
 }
 
@@ -618,17 +625,59 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudIn2)
 
 void imuHandler(const sensor_msgs::Imu::ConstPtr& imuIn)
 {
+  bool original = false;
+
   double roll, pitch, yaw;
+  float accX,accY,accZ;
+  float gravityX,gravityY,gravityZ;
+
+
   tf::Quaternion orientation;
   tf::quaternionMsgToTF(imuIn->orientation, orientation);
   tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
 
-  float accX = imuIn->linear_acceleration.y - sin(roll) * cos(pitch) * 9.81;
-  float accY = imuIn->linear_acceleration.z - cos(roll) * cos(pitch) * 9.81;
-  float accZ = imuIn->linear_acceleration.x + sin(pitch) * 9.81;
+  printf("before accel %6.3f %6.3f %6.3f   angle %6.3f %6.3f %6.3f \n",
+         imuIn->linear_acceleration.x,imuIn->linear_acceleration.y,imuIn->linear_acceleration.z,roll,pitch,yaw);
+
+  if( original ) {
+      gravityX = - sin(roll) * cos(pitch) * 9.81;
+      gravityY = - cos(roll) * cos(pitch) * 9.81;
+      gravityZ = sin(pitch) * 9.81;
+
+    accX = imuIn->linear_acceleration.y - sin(roll) * cos(pitch) * 9.81;
+    accY = imuIn->linear_acceleration.z - cos(roll) * cos(pitch) * 9.81;
+    accZ = imuIn->linear_acceleration.x + sin(pitch) * 9.81;
+  } else {
+      roll = -roll;
+      yaw = -yaw;
+
+//      // this works too - maybe not
+//      tf::Matrix3x3 mat(orientation);
+//      tf::Vector3 col = mat.transpose().getColumn(2);
+
+//      gravityX = col.getX() * 9.81;
+//      gravityY = col.getY() * 9.81;
+//      gravityZ = col.getZ() * 9.81;
+
+      // this works
+      gravityY = sin(roll) * cos(pitch) * 9.81;
+      gravityZ = cos(roll) * cos(pitch) * 9.81;
+      gravityX = - sin(pitch) * 9.81;
+
+    accX = imuIn->linear_acceleration.y + gravityY;
+    accY = -imuIn->linear_acceleration.z + gravityZ;
+    accZ = -imuIn->linear_acceleration.x + gravityX;
+
+//    roll = pitch = yaw = 0;
+//    accX = accY = accZ = 0;
+  }
+
+  printf("after  accel %6.3f %6.3f %6.3f   angle %6.3f %6.3f %6.3f \n",accX,accY,accZ,roll,pitch,yaw);
+  printf("     gravity %6.3f %6.3f %6.3f \n",gravityX,gravityY,gravityZ);
 
   imuPointerLast = (imuPointerLast + 1) % imuQueLength;
 
+  // this isn't the rotation in the sensor reference frame.  Its the rotation in the IMU frame
   imuTime[imuPointerLast] = imuIn->header.stamp.toSec() - 0.1068;
   imuRoll[imuPointerLast] = roll;
   imuPitch[imuPointerLast] = pitch;
@@ -642,6 +691,9 @@ void imuHandler(const sensor_msgs::Imu::ConstPtr& imuIn)
 
 int main(int argc, char** argv)
 {
+    fid = fopen("odometry.txt","w");
+    fprintf(fid,"# location[x y z] quaternion[x y z w]\n");
+
   ros::init(argc, argv, "scanRegistration");
   ros::NodeHandle nh;
 
